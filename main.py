@@ -1,11 +1,7 @@
 import os
 import random
 import tweepy
-from paapi5_python_sdk.api.default_api import DefaultApi
-from paapi5_python_sdk.models.partner_type import PartnerType
-from paapi5_python_sdk.models.search_items_request import SearchItemsRequest
-from paapi5_python_sdk.models.search_items_resource import SearchItemsResource
-from paapi5_python_sdk.rest import ApiException
+from amazon_paapi import AmazonApi, PartnerType
 
 def get_amazon_product(keyword):
     """Amazonで商品を検索し、ランダムな1つの商品情報を返す"""
@@ -14,53 +10,39 @@ def get_amazon_product(keyword):
     access_key = os.getenv("AMAZON_ACCESS_KEY")
     secret_key = os.getenv("AMAZON_SECRET_KEY")
     partner_tag = os.getenv("AMAZON_PARTNER_TAG")
-    host = "webservices.amazon.co.jp"
-    region = "us-west-2"
-
-    # --- APIクライアントの初期化 ---
-    api_client = DefaultApi(
-        access_key=access_key, secret_key=secret_key, host=host, region=region
-    )
-
-    # --- 検索リクエストの作成 ---
-    # 取得したい情報（リソース）を指定
-    search_items_resource = [
-        SearchItemsResource.ITEMINFO_TITLE,          # 商品タイトル
-        SearchItemsResource.OFFERS_LISTINGS_PRICE, # 価格
-        SearchItemsResource.IMAGES_PRIMARY_LARGE,    # 商品画像
-        SearchItemsResource.DETAILPAGEURL,           # 商品ページURL
-    ]
-
+    
     try:
-        # --- APIを呼び出して商品を検索 ---
-        search_request = SearchItemsRequest(
-            partner_tag=partner_tag,
-            partner_type=PartnerType.ASSOCIATES,
-            keywords=keyword,
-            resources=search_items_resource,
-            item_count=10, # 10件取得してランダムに1つ選ぶ
-            sort_by="AvgCustomerReviews" # レビュー評価順
+        # --- APIクライアントの初期化 (国コードを'JP'に指定) ---
+        amazon = AmazonApi(
+            access_key, 
+            secret_key, 
+            partner_tag, 
+            "JP",
+            partner_type=PartnerType.ASSOCIATES
         )
-        response = api_client.search_items(search_items_request=search_request)
 
-        if response.search_result and response.search_result.items:
+        # --- 商品を検索 (レビュー評価順で10件) ---
+        products = amazon.search_products(
+            keywords=keyword,
+            item_count=10,
+            sort_by="AvgCustomerReviews"
+        )
+
+        if products:
             # --- 取得した商品リストからランダムに1つ選択 ---
-            product = random.choice(response.search_result.items)
+            product = random.choice(products)
             
             # --- 必要な情報を抽出 ---
-            title = product.item_info.title.display_value
-            url = product.detail_page_url
+            title = product.title
+            url = product.url
             price = "価格情報なし"
-            if product.offers and product.offers.listings and product.offers.listings[0].price:
-                price = product.offers.listings[0].price.display_amount
+            if product.prices and product.prices.display_amount:
+                price = product.prices.display_amount
 
             return {"title": title, "url": url, "price": price}
 
-    except ApiException as exception:
-        print("Error in calling PA-API 5.0:", exception)
-        return None
     except Exception as e:
-        print("An unexpected error occurred:", e)
+        print(f"Amazon APIの呼び出し中にエラーが発生しました: {e}")
         return None
 
 
@@ -100,11 +82,11 @@ def post_to_x(product_info):
         """
 
         # --- Xに投稿 ---
-        client.create_tweet(text=tweet_text)
+        client.create_tweet(text=tweet_text.strip())
         print("Xへの投稿に成功しました。")
 
     except Exception as e:
-        print("Xへの投稿中にエラーが発生しました:", e)
+        print(f"Xへの投稿中にエラーが発生しました: {e}")
 
 
 if __name__ == "__main__":
