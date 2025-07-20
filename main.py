@@ -1,7 +1,7 @@
 import os
 import random
 import tweepy
-from amazon_paapi import AmazonApi, SearchResources
+from amazon_paapi import AmazonApi
 
 def get_amazon_product(keyword):
     """Amazonで商品を検索し、ランダムな1つの商品情報を返す"""
@@ -14,18 +14,26 @@ def get_amazon_product(keyword):
         amazon = AmazonApi(access_key, secret_key, partner_tag, "JP")
 
         # 【最重要修正点】
-        # 必要な情報（リソース）を指定して商品を検索します
+        # 取得したい情報（リソース）を文字列のリストで直接指定します
+        search_resources = [
+            "ItemInfo.Title",    # 商品のタイトル
+            "DetailPageURL",     # 商品の詳細ページURL
+            "Offers.Listings.Price" # 商品の価格
+        ]
+
         search_result = amazon.search_items(
             keywords=keyword,
             item_count=10,
             sort_by="AvgCustomerReviews",
-            resources=SearchResources.ALL # <- これが最も重要な追加点です
+            resources=search_resources # <- 文字列リストを渡します
         )
 
         if search_result and search_result.items:
             product = random.choice(search_result.items)
+
+            # 万が一、次のステップでエラーが出た場合の調査用です
+            # print(product.__dict__) 
             
-            # これで .title, .url, .prices が利用可能になります
             title = product.title
             url = product.url
             price = "価格情報なし"
