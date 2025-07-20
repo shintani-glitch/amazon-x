@@ -13,7 +13,6 @@ def get_amazon_product(keyword):
 
     try:
         # --- APIクライアントの初期化 (国コードを'JP'に指定) ---
-        # PartnerTypeはデフォルトで"Associates"のため、指定を省略
         amazon = AmazonApi(
             access_key, 
             secret_key, 
@@ -21,8 +20,8 @@ def get_amazon_product(keyword):
             "JP"
         )
 
-        # --- 商品を検索 (レビュー評価順で10件) ---
-        products = amazon.search_products(
+        # --- 商品を検索 (正しい関数名 search_items を使用) ---
+        products = amazon.search_items(
             keywords=keyword,
             item_count=10,
             sort_by="AvgCustomerReviews"
