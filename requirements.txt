@@ -1,0 +1,2 @@
+tweepy
+paapi5-python-sdk
