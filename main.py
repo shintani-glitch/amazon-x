@@ -11,28 +11,32 @@ def get_amazon_product(keyword):
     partner_tag = os.getenv("AMAZON_PARTNER_TAG")
     
     try:
-        amazon = AmazonApi(access_key, secret_key, partner_tag, "JP")
-
         # 【最重要修正点】
-        # 取得したい情報（リソース）を文字列のリストで直接指定します
+        # 取得したい情報（リソース）のリストをここで定義し、
+        # AmazonApiオブジェクトの初期化時に渡します。
         search_resources = [
-            "ItemInfo.Title",    # 商品のタイトル
-            "DetailPageURL",     # 商品の詳細ページURL
-            "Offers.Listings.Price" # 商品の価格
+            "ItemInfo.Title",
+            "DetailPageURL",
+            "Offers.Listings.Price"
         ]
 
+        amazon = AmazonApi(
+            access_key, 
+            secret_key, 
+            partner_tag, 
+            "JP",
+            resources=search_resources # <- resourcesはここで指定します
+        )
+
+        # こちらのsearch_itemsからは、resourcesの指定を削除します
         search_result = amazon.search_items(
             keywords=keyword,
             item_count=10,
-            sort_by="AvgCustomerReviews",
-            resources=search_resources # <- 文字列リストを渡します
+            sort_by="AvgCustomerReviews"
         )
 
         if search_result and search_result.items:
             product = random.choice(search_result.items)
-
-            # 万が一、次のステップでエラーが出た場合の調査用です
-            # print(product.__dict__) 
             
             title = product.title
             url = product.url
