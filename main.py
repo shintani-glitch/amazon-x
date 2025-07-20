@@ -5,33 +5,26 @@ from amazon_paapi import AmazonApi
 
 def get_amazon_product(keyword):
     """Amazonで商品を検索し、ランダムな1つの商品情報を返す"""
-
-    # --- 環境変数から認証情報を取得 ---
+    
     access_key = os.getenv("AMAZON_ACCESS_KEY")
     secret_key = os.getenv("AMAZON_SECRET_KEY")
     partner_tag = os.getenv("AMAZON_PARTNER_TAG")
-
+    
     try:
-        # --- APIクライアントの初期化 (国コードを'JP'に指定) ---
-        amazon = AmazonApi(
-            access_key, 
-            secret_key, 
-            partner_tag, 
-            "JP"
-        )
+        amazon = AmazonApi(access_key, secret_key, partner_tag, "JP")
 
-        # --- 商品を検索 (正しい関数名 search_items を使用) ---
-        products = amazon.search_items(
+        # 商品を検索し、結果全体をsearch_resultに格納
+        search_result = amazon.search_items(
             keywords=keyword,
             item_count=10,
             sort_by="AvgCustomerReviews"
         )
 
-        if products:
-            # --- 取得した商品リストからランダムに1つ選択 ---
-            product = random.choice(products)
-
-            # --- 必要な情報を抽出 ---
+        # 検索結果の箱と、その中の商品リストが存在するかをチェック
+        if search_result and search_result.products:
+            # 商品リスト (search_result.products) からランダムに1つ選択
+            product = random.choice(search_result.products)
+            
             title = product.title
             url = product.url
             price = "価格情報なし"
@@ -41,8 +34,12 @@ def get_amazon_product(keyword):
             return {"title": title, "url": url, "price": price}
 
     except Exception as e:
-        print(f"Amazon APIの呼び出し中にエラーが発生しました: {e}")
+        # エラー内容をより詳細に出力するように変更
+        print(f"Amazon APIの呼び出し中に予期せぬエラーが発生しました: {type(e).__name__} - {e}")
         return None
+
+    print("Amazonで対象の商品が見つかりませんでした。")
+    return None
 
 
 def post_to_x(product_info):
@@ -51,14 +48,12 @@ def post_to_x(product_info):
         print("商品情報が取得できなかったため、投稿をスキップします。")
         return
 
-    # --- 環境変数から認証情報を取得 ---
     api_key = os.getenv("X_API_KEY")
     api_key_secret = os.getenv("X_API_KEY_SECRET")
     access_token = os.getenv("X_ACCESS_TOKEN")
     access_token_secret = os.getenv("X_ACCESS_TOKEN_SECRET")
 
     try:
-        # --- X API v2クライアントの初期化 ---
         client = tweepy.Client(
             consumer_key=api_key,
             consumer_secret=api_key_secret,
@@ -66,21 +61,19 @@ def post_to_x(product_info):
             access_token_secret=access_token_secret,
         )
 
-        # --- 投稿メッセージを作成 ---
         tweet_text = f"""
         【🤖おすすめ商品紹介】
-
+        
         📚 {product_info['title']}
-
+        
         💰 {product_info['price']}
-
+        
         👇 詳しくはこちら
         {product_info['url']}
-
+        
         #プログラミング #書籍
         """
 
-        # --- Xに投稿 ---
         client.create_tweet(text=tweet_text.strip())
         print("Xへの投稿に成功しました。")
 
@@ -89,11 +82,14 @@ def post_to_x(product_info):
 
 
 if __name__ == "__main__":
-    # --- 検索キーワード ---
     SEARCH_KEYWORD = "Python 書籍"
-
-    # 1. Amazonで商品を検索
+    
+    print(f"「{SEARCH_KEYWORD}」のキーワードで商品検索を開始します...")
     product = get_amazon_product(SEARCH_KEYWORD)
-
-    # 2. Xに投稿
-    post_to_x(product)
+    
+    if product:
+        print(f"取得した商品: {product['title']}")
+        print("Xへの投稿を開始します...")
+        post_to_x(product)
+    else:
+        print("投稿する商品が見つからなかったため、処理を終了します。")
