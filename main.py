@@ -1,53 +1,69 @@
 import os
 import random
+import boto3
 import tweepy
-from amazon_paapi import AmazonApi
+from botocore.exceptions import ClientError
 
 def get_amazon_product(keyword):
-    """Amazonで商品を検索し、ランダムな1つの商品情報を返す"""
+    """boto3を使い、Amazonで商品を検索して商品情報を返す"""
     
+    # --- 環境変数から認証情報を取得 ---
     access_key = os.getenv("AMAZON_ACCESS_KEY")
     secret_key = os.getenv("AMAZON_SECRET_KEY")
     partner_tag = os.getenv("AMAZON_PARTNER_TAG")
     
+    # PA-API v5 のサービス名とリージョンを指定
+    service_name = "paapi5"
+    # 日本のマーケットプレイスの場合、リージョンは "us-west-2"
+    region_name = "us-west-2" 
+
     try:
-        # 【最重要修正点】
-        # 取得したい情報（リソース）のリストをここで定義し、
-        # AmazonApiオブジェクトの初期化時に渡します。
-        search_resources = [
-            "ItemInfo.Title",
-            "DetailPageURL",
-            "Offers.Listings.Price"
-        ]
-
-        amazon = AmazonApi(
-            access_key, 
-            secret_key, 
-            partner_tag, 
-            "JP",
-            resources=search_resources # <- resourcesはここで指定します
+        # --- boto3 クライアントの作成 ---
+        client = boto3.client(
+            service_name,
+            region_name=region_name,
+            aws_access_key_id=access_key,
+            aws_secret_access_key=secret_key,
+        )
+        
+        # --- APIに渡す検索パラメータを定義 ---
+        response = client.search_items(
+            PartnerTag=partner_tag,
+            PartnerType="Associates",
+            Keywords=keyword,
+            ItemCount=10,
+            SortBy="AvgCustomerReviews",
+            Resources=[
+                "ItemInfo.Title",
+                "DetailPageURL",
+ax               "Offers.Listings.Price"
+            ]
         )
 
-        # こちらのsearch_itemsからは、resourcesの指定を削除します
-        search_result = amazon.search_items(
-            keywords=keyword,
-            item_count=10,
-            sort_by="AvgCustomerReviews"
-        )
-
-        if search_result and search_result.items:
-            product = random.choice(search_result.items)
+        # --- 応答（辞書）から商品リストを取得 ---
+        items = response.get('SearchResult', {}).get('Items', [])
+        
+        if items:
+            # --- ランダムに商品を1つ選択 ---
+            product_data = random.choice(items)
             
-            title = product.title
-            url = product.url
+            # --- 辞書の階層をたどって、安全に情報を抽出 ---
+            title = product_data.get('ItemInfo', {}).get('Title', {}).get('DisplayValue', 'タイトル情報なし')
+            url = product_data.get('DetailPageURL', '#')
+            
             price = "価格情報なし"
-            if product.prices and product.prices.display_amount:
-                price = product.prices.display_amount
+            # 価格情報は階層が深いので、特に慎重にチェック
+            if 'Offers' in product_data and product_data['Offers'].get('Listings'):
+                price = product_data['Offers']['Listings'][0].get('Price', {}).get('DisplayAmount', '価格情報なし')
 
             return {"title": title, "url": url, "price": price}
 
+    except ClientError as e:
+        # boto3が返すAPIエラーを捕捉
+        print(f"boto3からAPIエラーが返されました: {e.response['Error']['Message']}")
+        return None
     except Exception as e:
-        print(f"Amazon APIの呼び出し中に予期せぬエラーが発生しました: {type(e).__name__} - {e}")
+        print(f"予期せぬエラーが発生しました: {type(e).__name__} - {e}")
         return None
 
     print("Amazonで対象の商品が見つかりませんでした。")
