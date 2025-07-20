@@ -13,17 +13,18 @@ def get_amazon_product(keyword):
     try:
         amazon = AmazonApi(access_key, secret_key, partner_tag, "JP")
 
-        # 商品を検索し、結果全体をsearch_resultに格納
+        # 商品を検索
         search_result = amazon.search_items(
             keywords=keyword,
             item_count=10,
             sort_by="AvgCustomerReviews"
         )
 
-        # 検索結果の箱と、その中の商品リストが存在するかをチェック
-        if search_result and search_result.products:
-            # 商品リスト (search_result.products) からランダムに1つ選択
-            product = random.choice(search_result.products)
+        # 【最重要修正点】
+        # 検索結果のリストは .products ではなく .items に格納されています。
+        if search_result and search_result.items:
+            # 商品リスト (search_result.items) からランダムに1つ選択
+            product = random.choice(search_result.items)
             
             title = product.title
             url = product.url
@@ -34,7 +35,6 @@ def get_amazon_product(keyword):
             return {"title": title, "url": url, "price": price}
 
     except Exception as e:
-        # エラー内容をより詳細に出力するように変更
         print(f"Amazon APIの呼び出し中に予期せぬエラーが発生しました: {type(e).__name__} - {e}")
         return None
 
