@@ -1,24 +1,24 @@
 import os
 import random
 import tweepy
-from amazon_paapi import AmazonApi, PartnerType
+from amazon_paapi import AmazonApi
 
 def get_amazon_product(keyword):
     """Amazonで商品を検索し、ランダムな1つの商品情報を返す"""
-    
+
     # --- 環境変数から認証情報を取得 ---
     access_key = os.getenv("AMAZON_ACCESS_KEY")
     secret_key = os.getenv("AMAZON_SECRET_KEY")
     partner_tag = os.getenv("AMAZON_PARTNER_TAG")
-    
+
     try:
         # --- APIクライアントの初期化 (国コードを'JP'に指定) ---
+        # PartnerTypeはデフォルトで"Associates"のため、指定を省略
         amazon = AmazonApi(
             access_key, 
             secret_key, 
             partner_tag, 
-            "JP",
-            partner_type=PartnerType.ASSOCIATES
+            "JP"
         )
 
         # --- 商品を検索 (レビュー評価順で10件) ---
@@ -31,7 +31,7 @@ def get_amazon_product(keyword):
         if products:
             # --- 取得した商品リストからランダムに1つ選択 ---
             product = random.choice(products)
-            
+
             # --- 必要な情報を抽出 ---
             title = product.title
             url = product.url
@@ -70,14 +70,14 @@ def post_to_x(product_info):
         # --- 投稿メッセージを作成 ---
         tweet_text = f"""
         【🤖おすすめ商品紹介】
-        
+
         📚 {product_info['title']}
-        
+
         💰 {product_info['price']}
-        
+
         👇 詳しくはこちら
         {product_info['url']}
-        
+
         #プログラミング #書籍
         """
 
@@ -92,9 +92,9 @@ def post_to_x(product_info):
 if __name__ == "__main__":
     # --- 検索キーワード ---
     SEARCH_KEYWORD = "Python 書籍"
-    
+
     # 1. Amazonで商品を検索
     product = get_amazon_product(SEARCH_KEYWORD)
-    
+
     # 2. Xに投稿
     post_to_x(product)
