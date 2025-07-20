@@ -36,7 +36,7 @@ def get_amazon_product(keyword):
             Resources=[
                 "ItemInfo.Title",
                 "DetailPageURL",
-ax               "Offers.Listings.Price"
+                "Offers.Listings.Price" # "ax"を削除した修正箇所
             ]
         )
 
