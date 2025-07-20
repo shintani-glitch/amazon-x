@@ -1,2 +1,2 @@
 tweepy
-python-amazon-paapi
+boto3
